@@ -16,8 +16,8 @@ public:
 
     void AddToBoidList(class ABoid* boid);
 	void RemoveFromBoidList(class ABoid* boid);
-    TSet<class ABoid*> GetBoidList() const { return Boids; };
+    TArray<AActor*> GetBoidList() const { return Boids; };
 
 private:
-    TSet<class ABoid*> Boids;
+    TArray<AActor*> Boids;
 };
