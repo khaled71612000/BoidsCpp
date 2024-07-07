@@ -9,25 +9,53 @@ ABoid::ABoid()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	BoidMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Boid Mesh Component"));
-	RootComponent = BoidMesh;
-	BoidMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BoidMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	BoidSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Boid Mesh Component"));
+	RootComponent = BoidSkeletalMesh;
+	BoidSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoidSkeletalMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+	BoidStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Boid Static Mesh"));
+	BoidStaticMesh->SetupAttachment(RootComponent);
+	BoidStaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoidStaticMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Detection Sphere"));
 	DetectionSphere->SetupAttachment(RootComponent);
-	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Block);
 
 	BoidVelocity = FVector::OneVector;
 	BoidAcceleration = FVector::ZeroVector;
 	MinAlignForce = -1;
 	MaxAlignForce = 1;
+
+	bIsInfluencedByRing = false;
 }
 
 void ABoid::SetPercipRadius(int32 rad)
 {
 	DetectionSphere->SetSphereRadius(rad);
+}
+
+void ABoid::ResetInfluenceState()
+{
+	bIsInfluencedByRing = false;
+	GetWorldTimerManager().ClearTimer(InfluenceTimerHandle);
+}
+
+void ABoid::AddForce(const FVector& Force)
+{
+	BoidAcceleration += Force;
+
+	// Update the velocity
+	BoidVelocity += BoidAcceleration;
+	BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
+
+	// Apply the movement
+	SetActorLocation(GetActorLocation() + BoidVelocity);
+
+	// Reset acceleration after applying the force, you dont want them to get faster each time they go through the ring
+	BoidAcceleration = FVector::ZeroVector;
 }
 
 void ABoid::BeginPlay()
@@ -45,7 +73,7 @@ void ABoid::Tick(float DeltaTime)
 
 	Flock(DeltaTime);
 	CheckBounds();
-	//UpdateRotation(DeltaTime);
+	UpdateRotation(DeltaTime);
 }
 
 void ABoid::Flock(float DeltaTime)
@@ -118,8 +146,14 @@ void ABoid::CheckBounds()
 
 void ABoid::UpdateRotation(float DeltaTime)
 {
-	//CurrentRotation = FMath::RInterpTo(CurrentRotation, GetActorRotation(), DeltaTime, 7.0f);
-	//BoidMesh->SetWorldRotation(CurrentRotation);
+	if (BoidVelocity.SizeSquared() > KINDA_SMALL_NUMBER)
+	{
+		FRotator CurrentRotation = GetActorRotation();
+		FRotator TargetRotation = BoidVelocity.Rotation();
+		float RotationSpeed = 5.0f; // Adjust this value to control the rotation speed
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, RotationSpeed);
+		SetActorRotation(NewRotation);
+	}
 }
 
 FVector ABoid::Separation(TArray<AActor*> boids)

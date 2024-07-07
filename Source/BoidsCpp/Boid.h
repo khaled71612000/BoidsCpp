@@ -18,6 +18,13 @@ class BOIDSCPP_API ABoid : public AActor
 public:
 	ABoid();
 
+	void AddForce(const FVector& Force);
+
+	float GetMaxAlign() const 
+	{
+		return MaxAlignForce;
+	}
+
 	FVector GetBoidVelocity() const { return BoidVelocity; }
 	void SetSpawnVolume(ABoidVolumeSpawner* spawner) { SpawnVolume = spawner; }
 	void SetMinMaxForce(float minForce, float maxForce)
@@ -34,7 +41,11 @@ public:
 	}
 
 	void SetPercipRadius(int32 rad);
+	void ResetInfluenceState();
 	void SetZToggle(bool bEnable) { bDisableZ = bEnable; }
+
+	bool bIsInfluencedByRing = false;
+	FTimerHandle InfluenceTimerHandle;
 
 protected:
 	virtual void BeginPlay() override;
@@ -54,7 +65,10 @@ private:
 	//FRotator CurrentRotation = FRotator();
 
 	UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
-	UStaticMeshComponent* BoidMesh = nullptr;
+	USkeletalMeshComponent* BoidSkeletalMesh = nullptr;
+
+	UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
+	UStaticMeshComponent* BoidStaticMesh = nullptr;
 
 	UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
 	ABoidVolumeSpawner* SpawnVolume = nullptr;

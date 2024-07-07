@@ -27,7 +27,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boid")
     int32 BoidSpawnNumber;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Boid")
+    UPROPERTY(EditAnywhere, Category = "Boid")
     TSubclassOf<ABoid> BoidBp;
 
 private:
