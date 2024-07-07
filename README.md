@@ -34,6 +34,8 @@
 - Steering Behaviors: [Steering Behaviors For Autonomous Characters](https://www.red3d.com/cwr/steer/gdc99/)
 
 This project serves as an excellent example for developers interested in exploring AI and simulation techniques using C++.
+[YouTube Video](https://youtu.be/L2dsAzmNYwI?si=cwHMqw6KVNRLABKw)
+
 ![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/5ff6f549-8c8e-470d-918d-90dbfa3d03b3)
 ![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/a1cf2645-6f31-45e0-bfef-9e69aa942d4a)
 ![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/dd67af29-e111-4c67-8b7f-2e8b4a3cc908)
