@@ -1,6 +1,9 @@
+
+![9](https://github.com/khaled71612000/BoidsCpp/assets/59780800/b57b7711-6e21-420b-9a0f-106fb45c7a14)
 # BoidsCpp
 
 **BoidsCpp** is a project developed using C++ to simulate the behavior of boids (bird-like objects) using the Boids algorithm. This project focuses on implementing flocking behavior, including alignment, cohesion, and separation, to create realistic group movements.
+![download (1)](https://github.com/user-attachments/assets/be15899a-0790-4127-8469-e495da572a85)
 
 ## Key Components
 
@@ -36,7 +39,6 @@
 This project serves as an excellent example for developers interested in exploring AI and simulation techniques using C++.
 [YouTube Video](https://youtu.be/L2dsAzmNYwI?si=cwHMqw6KVNRLABKw)
 
-![9](https://github.com/khaled71612000/BoidsCpp/assets/59780800/b57b7711-6e21-420b-9a0f-106fb45c7a14)
 ![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/5ff6f549-8c8e-470d-918d-90dbfa3d03b3)
 ![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/a1cf2645-6f31-45e0-bfef-9e69aa942d4a)
 ![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/dd67af29-e111-4c67-8b7f-2e8b4a3cc908)
