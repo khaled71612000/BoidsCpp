@@ -4,101 +4,84 @@
 #include "GameFramework/Actor.h"
 #include "Boid.generated.h"
 
-
 class USphereComponent;
 class UFlockSubsystem;
 class UStaticMeshComponent;
+class USkeletalMeshComponent;
 class ABoidVolumeSpawner;
 
 UCLASS()
 class BOIDSCPP_API ABoid : public AActor
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	ABoid();
+    ABoid();
 
-	void AddForce(const FVector& Force);
+    FVector GetBoidVelocity() const { return BoidVelocity; }
+    float GetPerceptionRadius() const { return PerceptionRadius; }
 
-	float GetMaxAlign() const 
-	{
-		return MaxAlignForce;
-	}
+    void AddForce(const FVector& force);
+    void SetSpawnVolume(ABoidVolumeSpawner* spawner) { SpawnVolume = spawner; }
+    float GetMaxAlign() const { return MaxAlignForce; }
+    void SetMinMaxForce(float minForce, float maxForce) { MinAlignForce = minForce; MaxAlignForce = maxForce; }
+    void SetPercipRadius(int32 rad);
+    void SetZToggle(bool bEnable) { bDisableZ = bEnable; }
+    void SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation);
 
-	FVector GetBoidVelocity() const { return BoidVelocity; }
-	void SetSpawnVolume(ABoidVolumeSpawner* spawner) { SpawnVolume = spawner; }
-	void SetMinMaxForce(float minForce, float maxForce)
-	{ 
-		MinAlignForce = minForce;
-		MaxAlignForce = maxForce;
-	}
-
-	void SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation)
-	{
-		bDisableAlign = disableAlign;
-		bDisableCohesion = disableCohesion;
-		bDisableSeparation = disableSeparation;
-	}
-
-	void SetPercipRadius(int32 rad);
-	void ResetInfluenceState();
-	void SetZToggle(bool bEnable) { bDisableZ = bEnable; }
-
-	bool bIsInfluencedByRing = false;
-	FTimerHandle InfluenceTimerHandle;
+    void ResetInfluenceState();
+    bool bIsInfluencedByRing = false;
+    FTimerHandle InfluenceTimerHandle;
 
 protected:
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
 
 private:
 
-	void Flock(float DeltaTime);
-	void CheckBounds();
-	void UpdateRotation(float DeltaTime);
+    void Flock(float deltaTime);
+    void CheckBounds();
+    void UpdateRotation(float deltaTime);
 
-	FVector Separation(TArray<AActor*> boids);
-	FVector Align(TArray<AActor*> boids);
-	FVector Cohesion(const TArray<AActor*> boids);
+    FVector Separation(const TArray<ABoid*>& boids);
+    FVector Align(const TArray<ABoid*>& boids);
+    FVector Cohesion(const TArray<ABoid*>& boids);
 
-	//UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	//FRotator CurrentRotation = FRotator();
+    void TriggerInfluence(float duration);
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
-	USkeletalMeshComponent* BoidSkeletalMesh = nullptr;
+private:
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
-	UStaticMeshComponent* BoidStaticMesh = nullptr;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
+    USkeletalMeshComponent* BoidSkeletalMesh = nullptr;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
-	ABoidVolumeSpawner* SpawnVolume = nullptr;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
+    UStaticMeshComponent* BoidStaticMesh = nullptr;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	USphereComponent* DetectionSphere;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
+    USphereComponent* DetectionSphere;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	FVector BoidVelocity;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
+    ABoidVolumeSpawner* SpawnVolume = nullptr;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	FVector BoidAcceleration;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+    FVector BoidVelocity;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	float MinAlignForce = -1;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+    FVector BoidAcceleration;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	float MaxAlignForce = 1;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+    float MinAlignForce = -1.f;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	bool bDisableZ = false;
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+    float MaxAlignForce = 1.f;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	bool bDisableAlign = false;
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    float PerceptionRadius = 100.f;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	bool bDisableSeparation = false;
+    bool bDisableZ = false;
+    bool bDisableAlign = false;
+    bool bDisableSeparation = false;
+    bool bDisableCohesion = false;
 
-	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-	bool bDisableCohesion = false;
-
-	UFlockSubsystem* FlockSubsystem;
+    UFlockSubsystem* FlockSubsystem = nullptr;
 };

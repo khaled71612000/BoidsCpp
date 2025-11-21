@@ -2,248 +2,301 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "FlockSubsystem.h"
-#include "Components/BoxComponent.h"
 #include "BoidVolumeSpawner.h"
+
+#include "Components/BoxComponent.h" 
 
 ABoid::ABoid()
 {
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true;
 
-	BoidSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Boid Mesh Component"));
-	RootComponent = BoidSkeletalMesh;
-	BoidSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BoidSkeletalMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+    BoidSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Boid Skeletal Mesh"));
+    RootComponent = BoidSkeletalMesh;
+    BoidSkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    BoidSkeletalMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-	BoidStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Boid Static Mesh"));
-	BoidStaticMesh->SetupAttachment(RootComponent);
-	BoidStaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BoidStaticMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+    BoidStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Boid Static Mesh"));
+    BoidStaticMesh->SetupAttachment(RootComponent);
+    BoidStaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    BoidStaticMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Detection Sphere"));
-	DetectionSphere->SetupAttachment(RootComponent);
-	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Block);
+    DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Detection Sphere"));
+    DetectionSphere->SetupAttachment(RootComponent);
+    DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-	BoidVelocity = FVector::OneVector;
-	BoidAcceleration = FVector::ZeroVector;
-	MinAlignForce = -1;
-	MaxAlignForce = 1;
-
-	bIsInfluencedByRing = false;
-}
-
-void ABoid::SetPercipRadius(int32 rad)
-{
-	DetectionSphere->SetSphereRadius(rad);
-}
-
-void ABoid::ResetInfluenceState()
-{
-	bIsInfluencedByRing = false;
-	GetWorldTimerManager().ClearTimer(InfluenceTimerHandle);
-}
-
-void ABoid::AddForce(const FVector& Force)
-{
-	BoidAcceleration += Force;
-
-	// Update the velocity
-	BoidVelocity += BoidAcceleration;
-	BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
-
-	// Apply the movement
-	SetActorLocation(GetActorLocation() + BoidVelocity);
-
-	// Reset acceleration after applying the force, you dont want them to get faster each time they go through the ring
-	BoidAcceleration = FVector::ZeroVector;
+    BoidVelocity = FVector::OneVector;
+    BoidAcceleration = FVector::ZeroVector;
 }
 
 void ABoid::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	FlockSubsystem = GetWorld()->GetSubsystem<UFlockSubsystem>();
-	BoidVelocity = FMath::VRand();
-	BoidVelocity *= FMath::RandRange(MaxAlignForce, MinAlignForce);
+    FlockSubsystem = GetWorld()->GetSubsystem<UFlockSubsystem>();
+
+    BoidVelocity = FMath::VRand();
+    BoidVelocity *= FMath::RandRange(MinAlignForce, MaxAlignForce);
 }
 
-void ABoid::Tick(float DeltaTime)
+void ABoid::Tick(float deltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(deltaTime);
 
-	Flock(DeltaTime);
-	CheckBounds();
-	UpdateRotation(DeltaTime);
+    Flock(deltaTime);
+    CheckBounds();
+    UpdateRotation(deltaTime);
 }
 
-void ABoid::Flock(float DeltaTime)
+void ABoid::Flock(float deltaTime)
 {
-	BoidAcceleration = FVector::ZeroVector;
+    if (!FlockSubsystem)
+    {
+        return;
+    }
 
-	TArray<AActor*> OverlappingActors;
-	DetectionSphere->GetOverlappingActors(OverlappingActors, ABoid::StaticClass());
+    BoidAcceleration = FVector::ZeroVector;
+    if (bIsInfluencedByRing)
+    {
+        return;
+    }
 
-	if (!bDisableSeparation)
-	{
-		BoidAcceleration += Separation(OverlappingActors);
-	}
-	if (!bDisableAlign)
-	{
-		BoidAcceleration += Align(OverlappingActors);
-	}
-	if (!bDisableCohesion)
-	{
-		BoidAcceleration += Cohesion(OverlappingActors);
-	}
+    TArray<ABoid*> neighbors;
+    FlockSubsystem->GetNeighbors(this, PerceptionRadius, neighbors);
 
-	BoidVelocity += BoidAcceleration;
-	BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
-	if (bDisableZ)
-	{
-		BoidVelocity.Z = 0;
-	}
+    if (!bDisableSeparation)
+    {
+        BoidAcceleration += Separation(neighbors);
+    }
+    if (!bDisableAlign)
+    {
+        BoidAcceleration += Align(neighbors);
+    }
 
-	SetActorLocation(GetActorLocation() + BoidVelocity);}
+    if (!bDisableCohesion)
+    {
+        BoidAcceleration += Cohesion(neighbors);
+    }
+
+    BoidVelocity += BoidAcceleration;
+    BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
+
+    if (bDisableZ)
+    {
+        BoidVelocity.Z = 0;
+    }
+
+    SetActorLocation(GetActorLocation() + BoidVelocity);
+}
+
+FVector ABoid::Separation(const TArray<ABoid*>& boids)
+{
+    FVector force = FVector::ZeroVector;
+    int32 count = 0;
+
+    for (ABoid* other : boids)
+    {
+        if (!other || other == this)
+        {
+            continue;
+        }
+
+        FVector diff = GetActorLocation() - other->GetActorLocation();
+        float dist = diff.Size();
+
+        if (dist < KINDA_SMALL_NUMBER)
+        {
+            continue;
+        }
+
+        force += diff / dist;
+        count++;
+    }
+
+    if (count > 0)
+    {
+        force /= count;
+        force.Normalize();
+        force *= MaxAlignForce;
+    }
+
+    return force;
+}
+
+FVector ABoid::Align(const TArray<ABoid*>& boids)
+{
+    FVector force = FVector::ZeroVector;
+    int32 count = 0;
+
+    for (ABoid* other : boids)
+    {
+        if (!other || other == this)
+        {
+            continue;
+        }
+
+        force += other->GetBoidVelocity();
+        count++;
+    }
+
+    if (count > 0)
+    {
+        force /= count;
+        force.Normalize();
+        force *= MaxAlignForce;
+    }
+
+    return force;
+}
+
+FVector ABoid::Cohesion(const TArray<ABoid*>& boids)
+{
+    FVector force = FVector::ZeroVector;
+    int32 count = 0;
+
+    for (ABoid* other : boids)
+    {
+        if (!other || other == this)
+        {
+            continue;
+        }
+
+        force += other->GetActorLocation();
+        count++;
+    }
+
+    if (count > 0)
+    {
+        force /= count;
+        force -= GetActorLocation();
+        force.Normalize();
+        force *= MaxAlignForce;
+    }
+
+    return force;
+}
+
+void ABoid::SetPercipRadius(int32 rad)
+{
+    PerceptionRadius = rad;
+    DetectionSphere->SetSphereRadius(rad);
+}
+
+void ABoid::SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation)
+{
+    bDisableAlign = disableAlign;
+    bDisableCohesion = disableCohesion;
+    bDisableSeparation = disableSeparation;
+}
 
 void ABoid::CheckBounds()
 {
-	if (SpawnVolume)
-	{
-		// Get the origin (center) and the extents (half-dimensions) of the SpawnVolume
-		FVector Location = GetActorLocation();
-		FVector VolumeOrigin = SpawnVolume->GetSpawnVolume()->Bounds.Origin;
-		FVector VolumeExtent = SpawnVolume->GetSpawnVolume()->Bounds.BoxExtent;
+    if (!SpawnVolume)
+    {
+        return;
+    }
 
-		bool bIsOutside = false;
+    const FBoxSphereBounds& bounds = SpawnVolume->GetSpawnVolume()->Bounds;
+    FVector min = bounds.Origin - bounds.BoxExtent;
+    FVector max = bounds.Origin + bounds.BoxExtent;
 
-		// Check if the Boid's location is within the bounds of the SpawnVolume
-		if (!FMath::IsWithin(Location.X, VolumeOrigin.X - VolumeExtent.X, VolumeOrigin.X + VolumeExtent.X))
-		{
-			BoidVelocity.X *= -1;
-			bIsOutside = true;
-		}
+    FVector loc = GetActorLocation();
+    bool bAdjusted = false;
 
-		if (!FMath::IsWithin(Location.Y, VolumeOrigin.Y - VolumeExtent.Y, VolumeOrigin.Y + VolumeExtent.Y))
-		{
-			BoidVelocity.Y *= -1;
-			bIsOutside = true;
-		}
+    // X
+    if (loc.X < min.X)
+    {
+        loc.X = min.X;
+        BoidVelocity.X = FMath::Abs(BoidVelocity.X);
+        bAdjusted = true;
+    }
+    else if (loc.X > max.X)
+    {
+        loc.X = max.X;
+        BoidVelocity.X = -FMath::Abs(BoidVelocity.X);
+        bAdjusted = true;
+    }
 
-		if (!bDisableZ && !FMath::IsWithin(Location.Z, VolumeOrigin.Z - VolumeExtent.Z, VolumeOrigin.Z + VolumeExtent.Z))
-		{
-			BoidVelocity.Z *= -1;
-			bIsOutside = true;
-		}
+    // Y
+    if (loc.Y < min.Y)
+    {
+        loc.Y = min.Y;
+        BoidVelocity.Y = FMath::Abs(BoidVelocity.Y);
+        bAdjusted = true;
+    }
+    else if (loc.Y > max.Y)
+    {
+        loc.Y = max.Y;
+        BoidVelocity.Y = -FMath::Abs(BoidVelocity.Y);
+        bAdjusted = true;
+    }
 
-		// If the boid is outside, nudge it slightly towards the center to prevent getting stuck
-		if (bIsOutside)
-		{
-			FVector DirectionToCenter = (VolumeOrigin - Location).GetSafeNormal();
-			SetActorLocation(Location + DirectionToCenter * MinAlignForce); // Nudge distance can be adjusted
-		}
-	}
+    // Z
+    if (!bDisableZ)
+    {
+        if (loc.Z < min.Z)
+        {
+            loc.Z = min.Z;
+            BoidVelocity.Z = FMath::Abs(BoidVelocity.Z);
+            bAdjusted = true;
+        }
+        else if (loc.Z > max.Z)
+        {
+            loc.Z = max.Z;
+            BoidVelocity.Z = -FMath::Abs(BoidVelocity.Z);
+            bAdjusted = true;
+        }
+    }
+
+    if (bAdjusted)
+    {
+        SetActorLocation(loc);
+    }
 }
 
-void ABoid::UpdateRotation(float DeltaTime)
+void ABoid::UpdateRotation(float dt)
 {
-	if (BoidVelocity.SizeSquared() > KINDA_SMALL_NUMBER)
-	{
-		FRotator CurrentRotation = GetActorRotation();
-		FRotator TargetRotation = BoidVelocity.Rotation();
-		float RotationSpeed = 5.0f; // Adjust this value to control the rotation speed
-		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, RotationSpeed);
-		SetActorRotation(NewRotation);
-	}
+    if (BoidVelocity.SizeSquared() > KINDA_SMALL_NUMBER)
+    {
+        FRotator current = GetActorRotation();
+        FRotator target = BoidVelocity.Rotation();
+        FRotator newRot = FMath::RInterpTo(current, target, dt, 5.f);
+        SetActorRotation(newRot);
+    }
 }
 
-FVector ABoid::Separation(TArray<AActor*> boids)
+void ABoid::ResetInfluenceState()
 {
-	FVector steeringForce = FVector::ZeroVector;
-	int32 total = 0;
-
-	for (AActor* actor : boids)
-	{
-		if (ABoid* boid = Cast<ABoid>(actor))
-		{
-			if (boid != this)
-			{
-				FVector difference = GetActorLocation() - boid->GetActorLocation();
-				float distance = difference.Size();
-
-				if (distance < KINDA_SMALL_NUMBER) 
-				{
-					continue;
-				}
-
-				// Directly weight by inverse of distance
-				FVector weightedDifference = difference / distance;
-				steeringForce += weightedDifference;
-				total++;
-			}
-		}
-	}
-
-	if (total > 0)
-	{
-		steeringForce /= total;
-		steeringForce.Normalize();
-		steeringForce *= MaxAlignForce;
-	}
-
-	return steeringForce;
+    bIsInfluencedByRing = false;
+    GetWorldTimerManager().ClearTimer(InfluenceTimerHandle);
 }
 
-FVector ABoid::Align(const TArray<AActor*> boids)
+void ABoid::TriggerInfluence(float duration)
 {
-	FVector steeringForce = FVector::ZeroVector;
-	int32 total = 0;
+    if (bIsInfluencedByRing)
+    {
+        return;
+    }
 
-	for (AActor* actor : boids)
-	{
-		if (ABoid* boid = Cast<ABoid>(actor))
-		{
-			if (boid != this)
-			{
-				steeringForce += boid->GetBoidVelocity();
-				total++;
-			}
-		}
-	}
+    bIsInfluencedByRing = true;
 
-	if (total > 0)
-	{
-		steeringForce /= total;
-		steeringForce.Normalize();
-		steeringForce *= MaxAlignForce;
-	}
-
-	return steeringForce;
-
+    GetWorldTimerManager().SetTimer(
+        InfluenceTimerHandle,
+        this,
+        &ABoid::ResetInfluenceState,
+        duration,
+        false
+    );
 }
-FVector ABoid::Cohesion(const TArray<AActor*> boids)
+
+void ABoid::AddForce(const FVector& force)
 {
-	FVector steeringForce = FVector::ZeroVector;
-	int32 total = 0;
+	BoidAcceleration += force;
 
-	for (AActor* actor : boids)
-	{
-		if (ABoid* boid = Cast<ABoid>(actor))
-		{
-			if (boid != this)
-			{
-				steeringForce += boid->GetActorLocation();
-				total++;
-			}
-		}
-	}
+	BoidVelocity += BoidAcceleration;
+	BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
 
-	if (total > 0)
-	{
-		steeringForce /= total;
-		steeringForce -= GetActorLocation();
-		steeringForce.Normalize();
-		steeringForce *= MaxAlignForce;
-	}
+	SetActorLocation(GetActorLocation() + BoidVelocity);
 
-	return steeringForce;
+	BoidAcceleration = FVector::ZeroVector;
 }

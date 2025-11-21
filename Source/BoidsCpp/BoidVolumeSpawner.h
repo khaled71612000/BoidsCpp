@@ -16,6 +16,7 @@ class BOIDSCPP_API ABoidVolumeSpawner : public AActor
     
 public:    
     ABoidVolumeSpawner();
+
 protected:
     virtual void BeginPlay() override;
 
@@ -39,26 +40,29 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
     UBoxComponent* SpawnVolume;
 
-	UPROPERTY(EditAnywhere, Category = "Boid|Motion")
-	float PerceptionRadius = 100.f;
+    UPROPERTY(EditAnywhere, Category = "Flock Debug")
+    bool bDrawQuadTree = true;
 
-	UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    float PerceptionRadius = 100.f;
+
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     float MinAlignForce = -1;
 
-	UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     float MaxAlignForce = 1;
 
     UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     bool bDisableZ = false;
 
-	UPROPERTY(EditAnywhere, Category = "Boid|Motion")
-	bool bDisableAlign = false;
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    bool bDisableAlign = false;
 
-	UPROPERTY(EditAnywhere, Category = "Boid|Motion")
-	bool bDisableSeparation = false;
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    bool bDisableSeparation = false;
 
-	UPROPERTY(EditAnywhere, Category = "Boid|Motion")
-	bool bDisableCohesion = false;
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    bool bDisableCohesion = false;
 
     UFlockSubsystem* FlockSubsystem;
 };

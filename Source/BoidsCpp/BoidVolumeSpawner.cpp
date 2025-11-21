@@ -7,56 +7,72 @@
 
 ABoidVolumeSpawner::ABoidVolumeSpawner()
 {
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true;
 
-	SpawnPointBillboard = CreateDefaultSubobject<UBillboardComponent>(TEXT("Spawn Billboard"));
-	RootComponent = SpawnPointBillboard;
+    SpawnPointBillboard = CreateDefaultSubobject<UBillboardComponent>(TEXT("Spawn Billboard"));
+    RootComponent = SpawnPointBillboard;
 
-	SpawnVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("Spawn Volume"));
-	SpawnVolume->SetupAttachment(RootComponent);
+    SpawnVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("Spawn Volume"));
+    SpawnVolume->SetupAttachment(RootComponent);
 
-	BoidSpawnNumber = 0;
+    BoidSpawnNumber = 0;
 }
 
 void ABoidVolumeSpawner::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	FlockSubsystem = GetWorld()->GetSubsystem<UFlockSubsystem>();
+    FlockSubsystem = GetWorld()->GetSubsystem<UFlockSubsystem>();
 
-	SpawnBoids(BoidSpawnNumber);
+    if (FlockSubsystem && SpawnVolume)
+    {
+        FlockSubsystem->SetWorldBoundsFromVolume(SpawnVolume);
+    }
+
+    SpawnBoids(BoidSpawnNumber);
 }
 
 void ABoidVolumeSpawner::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
+
+    //@todo_khaled I should create a worldtickable subsystem instead of tying a global subsys to an actor
+	if (FlockSubsystem)
+	{
+		FlockSubsystem->RebuildTree();
+        FlockSubsystem->DrawDebugTree(bDrawQuadTree);
+	}
 }
 
-void ABoidVolumeSpawner::SpawnBoids(int32 NumBoids)
+void ABoidVolumeSpawner::SpawnBoids(int32 numBoids)
 {
-	if (!ensure(FlockSubsystem))
-	{
-		return;
-	}
+    if (!ensure(FlockSubsystem))
+    {
+        return;
+    }
 
-	FVector SpawnOrigin = SpawnVolume->Bounds.Origin;
-	FVector SpawnExtent = SpawnVolume->Bounds.BoxExtent;
+    FVector origin = SpawnVolume->Bounds.Origin;
+    FVector extent = SpawnVolume->Bounds.BoxExtent;
 
-	FRotator SpawnRotation = FRotator::ZeroRotator;
-	FActorSpawnParameters BoidSpawnParams;
-	BoidSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    FRotator rotation = FRotator::ZeroRotator;
+    FActorSpawnParameters params;
+    params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	for (int32 i = 0; i < NumBoids; ++i)
-	{
-		//you could get actor location here and they will spawn in a perfect sphere since the VRand returns -1 to 1 in all directions
-		FVector SpawnLocation = UKismetMathLibrary::RandomPointInBoundingBox(SpawnOrigin, SpawnExtent);
-		SpawnRotation = FMath::VRand().ToOrientationRotator();
-		ABoid* spawnActor = GetWorld()->SpawnActor<ABoid>(BoidBp, SpawnLocation, SpawnRotation, BoidSpawnParams);
-		FlockSubsystem->AddToBoidList(spawnActor);
-		spawnActor->SetSpawnVolume(this);
-		spawnActor->SetMinMaxForce(MinAlignForce, MaxAlignForce);
-		spawnActor->SetPercipRadius(PerceptionRadius);
-		spawnActor->SetZToggle(bDisableZ);
-		spawnActor->SetRules(bDisableAlign, bDisableCohesion, bDisableSeparation);
-	}
+    for (int32 i = 0; i < numBoids; ++i)
+    {
+        FVector spawnLoc = UKismetMathLibrary::RandomPointInBoundingBox(origin, extent);
+        rotation = FMath::VRand().ToOrientationRotator();
+
+        ABoid* boid = GetWorld()->SpawnActor<ABoid>(BoidBp, spawnLoc, rotation, params);
+
+        FlockSubsystem->AddToBoidList(boid);
+
+        boid->SetSpawnVolume(this);
+        boid->SetMinMaxForce(MinAlignForce, MaxAlignForce);
+        boid->SetPercipRadius(PerceptionRadius);
+        boid->SetZToggle(bDisableZ);
+        boid->SetRules(bDisableAlign, bDisableCohesion, bDisableSeparation);
+    }
+
+    FlockSubsystem->RebuildTree();
 }
