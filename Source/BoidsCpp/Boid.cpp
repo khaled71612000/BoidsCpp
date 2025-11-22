@@ -55,11 +55,8 @@ void ABoid::Flock(float deltaTime)
         return;
     }
 
-    BoidAcceleration = FVector::ZeroVector;
-    if (bIsInfluencedByRing)
-    {
-        return;
-    }
+    BoidAcceleration = ExternalForce;
+    ExternalForce = FVector::ZeroVector;
 
     TArray<ABoid*> neighbors;
     FlockSubsystem->GetNeighbors(this, PerceptionRadius, neighbors);
@@ -182,6 +179,11 @@ void ABoid::SetPercipRadius(int32 rad)
     DetectionSphere->SetSphereRadius(rad);
 }
 
+void ABoid::SetDisableZ(bool bEnable)
+{
+	bDisableZ = bEnable;
+}
+
 void ABoid::SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation)
 {
     bDisableAlign = disableAlign;
@@ -201,20 +203,20 @@ void ABoid::CheckBounds()
     FVector max = bounds.Origin + bounds.BoxExtent;
 
     FVector loc = GetActorLocation();
-    bool bAdjusted = false;
+    bool isAdjusted = false;
 
     // X
     if (loc.X < min.X)
     {
         loc.X = min.X;
         BoidVelocity.X = FMath::Abs(BoidVelocity.X);
-        bAdjusted = true;
+        isAdjusted = true;
     }
     else if (loc.X > max.X)
     {
         loc.X = max.X;
         BoidVelocity.X = -FMath::Abs(BoidVelocity.X);
-        bAdjusted = true;
+        isAdjusted = true;
     }
 
     // Y
@@ -222,13 +224,13 @@ void ABoid::CheckBounds()
     {
         loc.Y = min.Y;
         BoidVelocity.Y = FMath::Abs(BoidVelocity.Y);
-        bAdjusted = true;
+        isAdjusted = true;
     }
     else if (loc.Y > max.Y)
     {
         loc.Y = max.Y;
         BoidVelocity.Y = -FMath::Abs(BoidVelocity.Y);
-        bAdjusted = true;
+        isAdjusted = true;
     }
 
     // Z
@@ -238,17 +240,17 @@ void ABoid::CheckBounds()
         {
             loc.Z = min.Z;
             BoidVelocity.Z = FMath::Abs(BoidVelocity.Z);
-            bAdjusted = true;
+            isAdjusted = true;
         }
         else if (loc.Z > max.Z)
         {
             loc.Z = max.Z;
             BoidVelocity.Z = -FMath::Abs(BoidVelocity.Z);
-            bAdjusted = true;
+            isAdjusted = true;
         }
     }
 
-    if (bAdjusted)
+    if (isAdjusted)
     {
         SetActorLocation(loc);
     }
@@ -265,38 +267,7 @@ void ABoid::UpdateRotation(float dt)
     }
 }
 
-void ABoid::ResetInfluenceState()
-{
-    bIsInfluencedByRing = false;
-    GetWorldTimerManager().ClearTimer(InfluenceTimerHandle);
-}
-
-void ABoid::TriggerInfluence(float duration)
-{
-    if (bIsInfluencedByRing)
-    {
-        return;
-    }
-
-    bIsInfluencedByRing = true;
-
-    GetWorldTimerManager().SetTimer(
-        InfluenceTimerHandle,
-        this,
-        &ABoid::ResetInfluenceState,
-        duration,
-        false
-    );
-}
-
 void ABoid::AddForce(const FVector& force)
 {
-	BoidAcceleration += force;
-
-	BoidVelocity += BoidAcceleration;
-	BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
-
-	SetActorLocation(GetActorLocation() + BoidVelocity);
-
-	BoidAcceleration = FVector::ZeroVector;
+    ExternalForce += force;
 }

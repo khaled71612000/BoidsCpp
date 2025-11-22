@@ -26,7 +26,7 @@ public:
     UBoxComponent* GetSpawnVolume() const { return SpawnVolume; }
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boid")
-    int32 BoidSpawnNumber;
+    int32 BoidSpawnNumber = 1000;
 
     UPROPERTY(EditAnywhere, Category = "Boid")
     TSubclassOf<ABoid> BoidBp;
@@ -44,7 +44,7 @@ private:
     bool bDrawQuadTree = true;
 
     UPROPERTY(EditAnywhere, Category = "Boid|Motion")
-    float PerceptionRadius = 100.f;
+    float PerceptionRadius = 200.f;
 
     UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     float MinAlignForce = -1;

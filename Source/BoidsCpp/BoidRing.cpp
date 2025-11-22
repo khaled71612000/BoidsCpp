@@ -12,9 +12,6 @@ ABoidRing::ABoidRing()
 	DetectionSphere->SetCollisionProfileName(TEXT("Trigger"));
 	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
-
-	ProbabilityToGoThrough = 0.5f;
-	InfluenceDuration = 2.0f;
 }
 
 void ABoidRing::BeginPlay()
@@ -30,40 +27,54 @@ void ABoidRing::Tick(float DeltaTime)
 
 void ABoidRing::InfluenceBoids()
 {
-	TArray<AActor*> OverlappingActors;
-	DetectionSphere->GetOverlappingActors(OverlappingActors, ABoid::StaticClass());
+    TArray<AActor*> overlappingActors;
+    DetectionSphere->GetOverlappingActors(overlappingActors, ABoid::StaticClass());
 
-	for (AActor* Actor : OverlappingActors)
-	{
-		ABoid* Boid = Cast<ABoid>(Actor);
-		if (Boid)
-		{
-			// Determine if the boid should go through the ring or around it
-			float RandomValue = FMath::FRand();
-			if (RandomValue <= ProbabilityToGoThrough && !Boid->bIsInfluencedByRing)
-			{
-				// Go through the ring
-				FVector DirectionToRing = GetActorLocation() - Boid->GetActorLocation();
-				DirectionToRing.Normalize();
+    if (overlappingActors.Num() == 0)
+    {
+        return;
+    }
 
-				FVector InfluenceForce = DirectionToRing * Boid->GetMaxAlign();
-				Boid->AddForce(InfluenceForce);
-			}
-			else
-			{
-				// Go around the ring
-				FVector DirectionToRing = GetActorLocation() - Boid->GetActorLocation();
-				DirectionToRing.Normalize();
+    const FVector ringLocation = GetActorLocation();
+    const float radius = DetectionSphere->Bounds.SphereRadius;
 
-				FVector TangentialDirection = FVector::CrossProduct(DirectionToRing, FVector::UpVector);
-				TangentialDirection.Normalize();
+    for (AActor* Actor : overlappingActors)
+    {
+        ABoid* boid = Cast<ABoid>(Actor);
+        if (!boid)
+        {
+            continue;
+        }
 
-				FVector InfluenceForce = TangentialDirection * Boid->GetMaxAlign();
-				Boid->AddForce(InfluenceForce);
-			}
+        const FVector boidLocation = boid->GetActorLocation();
+        FVector toRing = ringLocation - boidLocation;
+        const float dist = toRing.Size();
 
-			Boid->bIsInfluencedByRing = true;
-			Boid->GetWorldTimerManager().SetTimer(Boid->InfluenceTimerHandle, Boid, &ABoid::ResetInfluenceState, InfluenceDuration, false);
-		}
-	}
+        if (dist <= KINDA_SMALL_NUMBER || radius <= KINDA_SMALL_NUMBER)
+        {
+            continue;
+        }
+
+        const FVector DirToRing = toRing / dist;
+        const float weight = 1.0f - FMath::Clamp(dist / radius, 0.0f, 1.0f);
+        FVector influenceForce = FVector::ZeroVector;
+
+        if (bGoThroughRing)
+        {
+            influenceForce = DirToRing * boid->GetMaxAlign() * weight;
+        }
+        else
+        {
+            FVector tangentRound = FVector::CrossProduct(DirToRing, FVector::UpVector);
+            if (tangentRound.IsNearlyZero())
+            {
+                tangentRound = FVector::CrossProduct(DirToRing, FVector::RightVector);
+            }
+            tangentRound.Normalize();
+
+            influenceForce = tangentRound * boid->GetMaxAlign() * weight;
+        }
+
+        boid->AddForce(influenceForce);
+    }
 }

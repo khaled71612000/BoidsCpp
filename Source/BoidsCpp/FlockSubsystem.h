@@ -35,12 +35,22 @@ struct FBoidSpatialNode
 
 
 UCLASS()
-class BOIDSCPP_API UFlockSubsystem : public UWorldSubsystem
+class BOIDSCPP_API UFlockSubsystem : public UTickableWorldSubsystem
 {
     GENERATED_BODY()
 
 public:
     UFlockSubsystem();
+
+    virtual void Tick(float DeltaTime) override
+    {
+        RebuildTree();
+    }
+
+    virtual TStatId GetStatId() const override
+    {
+        RETURN_QUICK_DECLARE_CYCLE_STAT(UFlockSubsystem, STATGROUP_Tickables);
+    }
 
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
@@ -74,10 +84,10 @@ private:
 
 
     UPROPERTY(EditAnywhere)
-    int32 MaxBoidsPerNode = 4;
+    int32 MaxBoidsPerNode = 8;
 
     UPROPERTY(EditAnywhere)
-    int32 MaxTreeDepth = 10;
+    int32 MaxTreeDepth = 7;
 
     TArray<ABoid*> Boids;
 

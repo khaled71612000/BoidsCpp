@@ -36,10 +36,8 @@ void ABoidVolumeSpawner::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    //@todo_khaled I should create a worldtickable subsystem instead of tying a global subsys to an actor
 	if (FlockSubsystem)
 	{
-		FlockSubsystem->RebuildTree();
         FlockSubsystem->DrawDebugTree(bDrawQuadTree);
 	}
 }
@@ -70,9 +68,9 @@ void ABoidVolumeSpawner::SpawnBoids(int32 numBoids)
         boid->SetSpawnVolume(this);
         boid->SetMinMaxForce(MinAlignForce, MaxAlignForce);
         boid->SetPercipRadius(PerceptionRadius);
-        boid->SetZToggle(bDisableZ);
+        boid->SetDisableZ(bDisableZ);
         boid->SetRules(bDisableAlign, bDisableCohesion, bDisableSeparation);
     }
 
-    FlockSubsystem->RebuildTree();
+    //FlockSubsystem->RebuildTree();
 }

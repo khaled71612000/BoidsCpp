@@ -26,12 +26,8 @@ public:
     float GetMaxAlign() const { return MaxAlignForce; }
     void SetMinMaxForce(float minForce, float maxForce) { MinAlignForce = minForce; MaxAlignForce = maxForce; }
     void SetPercipRadius(int32 rad);
-    void SetZToggle(bool bEnable) { bDisableZ = bEnable; }
+    void SetDisableZ(bool bEnable);
     void SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation);
-
-    void ResetInfluenceState();
-    bool bIsInfluencedByRing = false;
-    FTimerHandle InfluenceTimerHandle;
 
 protected:
     virtual void BeginPlay() override;
@@ -46,8 +42,6 @@ private:
     FVector Separation(const TArray<ABoid*>& boids);
     FVector Align(const TArray<ABoid*>& boids);
     FVector Cohesion(const TArray<ABoid*>& boids);
-
-    void TriggerInfluence(float duration);
 
 private:
 
@@ -68,6 +62,9 @@ private:
 
     UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
     FVector BoidAcceleration;
+
+    UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+    FVector ExternalForce = FVector::ZeroVector;
 
     UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
     float MinAlignForce = -1.f;

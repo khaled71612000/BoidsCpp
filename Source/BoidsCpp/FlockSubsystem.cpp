@@ -59,6 +59,8 @@ void UFlockSubsystem::RebuildTree()
         return;
     }
 
+    OctNodes.Reserve(Boids.Num() * 2);
+
     const FVector min3D = WorldMin;
     const FVector max3D = WorldMax;
 
@@ -191,7 +193,7 @@ void UFlockSubsystem::QueryNode(
     }
 
     const FBoidSpatialNode& node = OctNodes[NodeIndex];
-    if (!SphereIntersectsNode(QueryPos, FMath::Sqrt(RadiusSq), node))
+    if (!SphereIntersectsNode(QueryPos, RadiusSq, node))
     {
         return;
     }
@@ -246,6 +248,7 @@ bool UFlockSubsystem::SphereIntersectsNode(
 
 void UFlockSubsystem::DrawDebugTree(bool bDraw) const
 {
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     if (!bDraw || RootNodeIndex == INDEX_NONE)
     {
         return;
@@ -275,6 +278,7 @@ void UFlockSubsystem::DrawDebugTree(bool bDraw) const
             8.0f     // line thickness
         );
     }
+#endif
 }
 
 void UFlockSubsystem::GetNeighbors(ABoid* Query, float Radius, TArray<ABoid*>& OutNeighbors) const

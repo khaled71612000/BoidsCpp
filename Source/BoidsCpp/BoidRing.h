@@ -22,12 +22,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* DetectionSphere;
+	// if true , boids steer through the object and if false they will steer away from it 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "boids")
+	bool bGoThroughRing = false;
 
 	void InfluenceBoids();
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "boids")
-	float ProbabilityToGoThrough = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "boids")
-	float InfluenceDuration;
 };
