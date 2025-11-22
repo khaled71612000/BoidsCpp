@@ -1,8 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
 #include "Components/BoxComponent.h"
+#include "Subsystems/WorldSubsystem.h"
+#include "FlockDeveloperSettings.h"
 #include "FlockSubsystem.generated.h"
 
 class ABoid;
@@ -12,13 +13,11 @@ struct FBoidSpatialNode
 {
     GENERATED_BODY()
 
-    // 3D center & half-size
     FVector Center = FVector::ZeroVector;
     FVector HalfSize = FVector::ZeroVector;
 
     TArray<ABoid*> Boids;
 
-    // 8 children for an octree
     int32 Children[8] =
     {
         INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE,
@@ -27,12 +26,8 @@ struct FBoidSpatialNode
 
     int32 Depth = 0;
 
-    bool IsLeaf() const
-    {
-        return Children[0] == INDEX_NONE;
-    }
+    bool IsLeaf() const { return Children[0] == INDEX_NONE; }
 };
-
 
 UCLASS()
 class BOIDSCPP_API UFlockSubsystem : public UTickableWorldSubsystem
@@ -42,10 +37,9 @@ class BOIDSCPP_API UFlockSubsystem : public UTickableWorldSubsystem
 public:
     UFlockSubsystem();
 
-    virtual void Tick(float DeltaTime) override
-    {
-        RebuildTree();
-    }
+    virtual void Tick(float DeltaTime) override;
+    void TickActorBoids(float DeltaTime);
+    void TickDataBoids(float DeltaTime);
 
     virtual TStatId GetStatId() const override
     {
@@ -82,16 +76,15 @@ private:
         const FBoidSpatialNode& Node
     ) const;
 
-
-    UPROPERTY(EditAnywhere)
+    UPROPERTY()
+    EFlockSimulationMode SimulationMode = EFlockSimulationMode::Actors;
+    
     int32 MaxBoidsPerNode = 8;
-
-    UPROPERTY(EditAnywhere)
     int32 MaxTreeDepth = 7;
+    float MinNodeHalfSize = 1.f;
 
     TArray<ABoid*> Boids;
-
-	TArray<FBoidSpatialNode> OctNodes; 
+    TArray<FBoidSpatialNode> OctNodes;
     int32 RootNodeIndex = INDEX_NONE;
 
     FVector WorldMin = FVector::ZeroVector;

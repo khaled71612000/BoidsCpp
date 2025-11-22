@@ -26,5 +26,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "boids")
 	bool bGoThroughRing = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boids")
+    float LaunchSpeed = 800.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boids", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float InnerRadiusFrac = 0.25f;
+
 	void InfluenceBoids();
 };

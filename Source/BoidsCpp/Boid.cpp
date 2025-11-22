@@ -8,7 +8,7 @@
 
 ABoid::ABoid()
 {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
     BoidSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Boid Skeletal Mesh"));
     RootComponent = BoidSkeletalMesh;
@@ -20,10 +20,11 @@ ABoid::ABoid()
     BoidStaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     BoidStaticMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-    DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("Detection Sphere"));
-    DetectionSphere->SetupAttachment(RootComponent);
-    DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+    BoidSkeletalMesh->SetGenerateOverlapEvents(false);
+    BoidSkeletalMesh->SetCanEverAffectNavigation(false);
+
+    BoidStaticMesh->SetGenerateOverlapEvents(false);
+    BoidStaticMesh->SetCanEverAffectNavigation(false);
 
     BoidVelocity = FVector::OneVector;
     BoidAcceleration = FVector::ZeroVector;
@@ -39,19 +40,49 @@ void ABoid::BeginPlay()
     BoidVelocity *= FMath::RandRange(MinAlignForce, MaxAlignForce);
 }
 
-void ABoid::Tick(float deltaTime)
+void ABoid::SimulateFlock(float DeltaTime)
 {
-    Super::Tick(deltaTime);
-
-    Flock(deltaTime);
-    CheckBounds();
-    UpdateRotation(deltaTime);
+    ComputeFlockForces();
+    ApplyFlock(DeltaTime);
 }
 
-void ABoid::Flock(float deltaTime)
+void ABoid::ComputeFlockForces()
+{
+    Flock();
+}
+
+void ABoid::ApplyFlock(float DeltaTime)
+{
+    SetActorLocation(GetActorLocation() + BoidVelocity);
+    CheckBounds();
+    UpdateRotation(DeltaTime);
+}
+
+void ABoid::RequestLaunch(const FVector& LaunchVelocity)
+{
+    PendingLaunchVelocity = LaunchVelocity;
+    bPendingLaunch = true;
+}
+
+void ABoid::Flock()
 {
     if (!FlockSubsystem)
     {
+        return;
+    }
+
+    if (bPendingLaunch)
+    {
+        const float launchSpeed = PendingLaunchVelocity.Size();
+        if (launchSpeed > 0.f)
+        {
+            MaxAlignForce = FMath::Max(MaxAlignForce, launchSpeed);
+            BoidVelocity = PendingLaunchVelocity;
+        }
+
+        ExternalForce = FVector::ZeroVector;
+        BoidAcceleration = FVector::ZeroVector;
+        bPendingLaunch = false;
         return;
     }
 
@@ -69,7 +100,6 @@ void ABoid::Flock(float deltaTime)
     {
         BoidAcceleration += Align(neighbors);
     }
-
     if (!bDisableCohesion)
     {
         BoidAcceleration += Cohesion(neighbors);
@@ -82,8 +112,6 @@ void ABoid::Flock(float deltaTime)
     {
         BoidVelocity.Z = 0;
     }
-
-    SetActorLocation(GetActorLocation() + BoidVelocity);
 }
 
 FVector ABoid::Separation(const TArray<ABoid*>& boids)
@@ -176,7 +204,6 @@ FVector ABoid::Cohesion(const TArray<ABoid*>& boids)
 void ABoid::SetPercipRadius(int32 rad)
 {
     PerceptionRadius = rad;
-    DetectionSphere->SetSphereRadius(rad);
 }
 
 void ABoid::SetDisableZ(bool bEnable)
@@ -262,7 +289,7 @@ void ABoid::UpdateRotation(float dt)
     {
         FRotator current = GetActorRotation();
         FRotator target = BoidVelocity.Rotation();
-        FRotator newRot = FMath::RInterpTo(current, target, dt, 5.f);
+        FRotator newRot = FMath::RInterpTo(current, target, dt, RotationInterpSpeed);
         SetActorRotation(newRot);
     }
 }

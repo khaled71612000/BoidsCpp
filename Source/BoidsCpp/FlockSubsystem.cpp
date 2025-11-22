@@ -9,9 +9,61 @@ UFlockSubsystem::UFlockSubsystem()
     RootNodeIndex = INDEX_NONE;
 }
 
+void UFlockSubsystem::Tick(float DeltaTime)
+{
+    switch (SimulationMode)
+    {
+    case EFlockSimulationMode::Actors:
+        TickActorBoids(DeltaTime);
+        break;
+    case EFlockSimulationMode::DataOriented:
+        TickDataBoids(DeltaTime);
+        break;
+    default:
+        TickActorBoids(DeltaTime);
+        break;
+    }
+}
+
+void UFlockSubsystem::TickActorBoids(float DeltaTime)
+{
+    RebuildTree();
+
+    const int32 count = Boids.Num();
+    ParallelFor(count, [this](int32 Index)
+        {
+            ABoid* Boid = Boids[Index];
+            if (IsValid(Boid))
+            {
+                Boid->ComputeFlockForces();
+            }
+        });
+
+    for (ABoid* Boid : Boids)
+    {
+        if (IsValid(Boid))
+        {
+            Boid->ApplyFlock(DeltaTime);
+        }
+    }
+}
+
+void UFlockSubsystem::TickDataBoids(float DeltaTime)
+{
+    // @todo_Khaled data oriented sim will go here
+}
+
 void UFlockSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
+
+	if (const UFlockDeveloperSettings* Settings = UFlockDeveloperSettings::Get())
+	{
+		MaxBoidsPerNode = Settings->MaxBoidsPerNode;
+		MaxTreeDepth = Settings->MaxTreeDepth;
+		MinNodeHalfSize = Settings->MinNodeHalfSize;
+        SimulationMode = Settings->SimulationMode;
+	}
 
     OctNodes.Reset();
     Boids.Reset();
@@ -104,8 +156,7 @@ void UFlockSubsystem::InsertBoidIntoNode(int32 NodeIndex, ABoid* Boid)
         return;
     }
 
-    const float minHalfExtent = 1.0f;
-    if (node.HalfSize.GetMin() <= minHalfExtent)
+    if (node.HalfSize.GetMin() <= MinNodeHalfSize)
     {
         node.Boids.Add(Boid);
         return;
@@ -232,7 +283,7 @@ void UFlockSubsystem::QueryNode(
 
 bool UFlockSubsystem::SphereIntersectsNode(
     const FVector& QueryPos,
-    float Radius,
+    float RadiusSq,
     const FBoidSpatialNode& Node) const
 {
     const FVector delta = (QueryPos - Node.Center).GetAbs();
@@ -242,44 +293,80 @@ bool UFlockSubsystem::SphereIntersectsNode(
     const float dz = FMath::Max(delta.Z - Node.HalfSize.Z, 0.0f);
 
     const float distSq = dx * dx + dy * dy + dz * dz;
-    return distSq <= Radius * Radius;
+    return distSq <= RadiusSq;
 }
 
 
 void UFlockSubsystem::DrawDebugTree(bool bDraw) const
 {
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-    if (!bDraw || RootNodeIndex == INDEX_NONE)
-    {
-        return;
-    }
+	if (!bDraw || RootNodeIndex == INDEX_NONE)
+	{
+		return;
+	}
 
-    const UWorld* const world = GetWorld();
-    if (!world)
-    {
-        return;
-    }
+	const UWorld* const world = GetWorld();
+	if (!world)
+	{
+		return;
+	}
 
-    for (const FBoidSpatialNode& node : OctNodes)
-    {
-        const FVector center = node.Center;
-        const FVector extent = node.HalfSize;
+	const float invMaxDepth = (MaxTreeDepth > 0)
+		? 1.0f / static_cast<float>(MaxTreeDepth)
+		: 0.0f;
 
-        const FColor color = node.IsLeaf() ? FColor::Green : FColor::Blue;
+	if (!WorldMin.IsNearlyZero() || !WorldMax.IsNearlyZero())
+	{
+		const FVector worldCenter = (WorldMin + WorldMax) * 0.5f;
+		const FVector worldExtent = (WorldMax - WorldMin) * 0.5f;
 
-        DrawDebugBox(
-            world,
-            center,
-            extent,
-            color,
-            false,   // not persistent
-            0.0f,    // lifetime
-            0,       // depth priority
-            8.0f     // line thickness
-        );
-    }
+		DrawDebugBox(
+			world,
+			worldCenter,
+			worldExtent,
+			FColor::White,
+			false,
+			0.0f,
+			0,
+			2.0f);
+	}
+
+	for (const FBoidSpatialNode& node : OctNodes)
+	{
+		// Only draw useful nodes: leaves that actually contain boids
+		if (!node.IsLeaf() || node.Boids.Num() == 0)
+		{
+			continue;
+		}
+
+		const FVector Center = node.Center;
+		const FVector Extent = node.HalfSize;
+
+		const float DepthT = FMath::Clamp(node.Depth * invMaxDepth, 0.0f, 1.0f);
+		const int32 BoidCount = node.Boids.Num();
+
+		// Depth → color (blue → red), count → line thickness
+		const FLinearColor LinearColor = FLinearColor::LerpUsingHSV(
+			FLinearColor::Blue,
+			FLinearColor::Red,
+			DepthT);
+
+		const FColor Color = LinearColor.ToFColor(true);
+		const float Thickness = FMath::Clamp(1.0f + BoidCount * 0.2f, 1.0f, 8.0f);
+
+		DrawDebugBox(
+			world,
+			Center,
+			Extent,
+			Color,
+			false,  // not persistent
+			0.0f,   // lifetime
+			0,      // depth priority
+			Thickness);
+	}
 #endif
 }
+
 
 void UFlockSubsystem::GetNeighbors(ABoid* Query, float Radius, TArray<ABoid*>& OutNeighbors) const
 {
@@ -312,8 +399,7 @@ void UFlockSubsystem::SubdivideNode(int32 NodeIndex)
     }
 
     const FVector quarter = nodeCopy.HalfSize * 0.5f;
-    const float minHalfExtent = 1.0f;
-    if (quarter.GetMin() <= minHalfExtent)
+    if (quarter.GetMin() <= MinNodeHalfSize)
     {
         return;
     }

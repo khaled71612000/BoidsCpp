@@ -28,14 +28,17 @@ public:
     void SetPercipRadius(int32 rad);
     void SetDisableZ(bool bEnable);
     void SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation);
+    void SimulateFlock(float DeltaTime);
+    void ComputeFlockForces();
+    void ApplyFlock(float DeltaTime);
+    void RequestLaunch(const FVector& LaunchVelocity);
 
 protected:
     virtual void BeginPlay() override;
-    virtual void Tick(float DeltaTime) override;
 
 private:
 
-    void Flock(float deltaTime);
+    void Flock();
     void CheckBounds();
     void UpdateRotation(float deltaTime);
 
@@ -50,9 +53,6 @@ private:
 
     UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
     UStaticMeshComponent* BoidStaticMesh = nullptr;
-
-    UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
-    USphereComponent* DetectionSphere;
 
     UPROPERTY(VisibleAnywhere, Category = "Boid|Components")
     ABoidVolumeSpawner* SpawnVolume = nullptr;
@@ -72,8 +72,17 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
     float MaxAlignForce = 1.f;
 
+	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+	FVector PendingLaunchVelocity = FVector::ZeroVector;
+
+	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
+	bool bPendingLaunch = false;
+
     UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     float PerceptionRadius = 100.f;
+
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    float RotationInterpSpeed = 5.f;
 
     bool bDisableZ = false;
     bool bDisableAlign = false;

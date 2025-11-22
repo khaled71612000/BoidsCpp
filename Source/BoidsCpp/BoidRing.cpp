@@ -37,38 +37,59 @@ void ABoidRing::InfluenceBoids()
 
     const FVector ringLocation = GetActorLocation();
     const float radius = DetectionSphere->Bounds.SphereRadius;
-
-    for (AActor* Actor : overlappingActors)
+    if (radius <= KINDA_SMALL_NUMBER)
     {
-        ABoid* boid = Cast<ABoid>(Actor);
+        return;
+    }
+
+    const float clampedInnerFraction = FMath::Clamp(InnerRadiusFrac, 0.f, 1.f);
+    const float innerRadius = radius * clampedInnerFraction;
+    const FVector ringForward = GetActorForwardVector().GetSafeNormal();
+
+    for (AActor* actor : overlappingActors)
+    {
+        ABoid* boid = Cast<ABoid>(actor);
         if (!boid)
         {
             continue;
         }
 
         const FVector boidLocation = boid->GetActorLocation();
-        FVector toRing = ringLocation - boidLocation;
-        const float dist = toRing.Size();
+        const FVector toRing = ringLocation - boidLocation;
+        const float   dist = toRing.Size();
 
-        if (dist <= KINDA_SMALL_NUMBER || radius <= KINDA_SMALL_NUMBER)
+        if (dist <= KINDA_SMALL_NUMBER)
         {
             continue;
         }
 
-        const FVector DirToRing = toRing / dist;
+        const FVector dirToRing = toRing / dist;
+        // weight - normalized dist
         const float weight = 1.0f - FMath::Clamp(dist / radius, 0.0f, 1.0f);
-        FVector influenceForce = FVector::ZeroVector;
+        if (bGoThroughRing && dist < innerRadius)
+        {
+            FVector launchDir = ringForward;
+            if (launchDir.IsNearlyZero())
+            {
+                launchDir = -dirToRing;
+            }
 
+            const FVector launchVelocity = launchDir.GetSafeNormal() * LaunchSpeed;
+            boid->RequestLaunch(launchVelocity);
+            continue;
+        }
+
+        FVector influenceForce = FVector::ZeroVector;
         if (bGoThroughRing)
         {
-            influenceForce = DirToRing * boid->GetMaxAlign() * weight;
+            influenceForce = dirToRing * boid->GetMaxAlign() * weight;
         }
         else
         {
-            FVector tangentRound = FVector::CrossProduct(DirToRing, FVector::UpVector);
+            FVector tangentRound = FVector::CrossProduct(dirToRing, FVector::UpVector);
             if (tangentRound.IsNearlyZero())
             {
-                tangentRound = FVector::CrossProduct(DirToRing, FVector::RightVector);
+                tangentRound = FVector::CrossProduct(dirToRing, FVector::RightVector);
             }
             tangentRound.Normalize();
 
