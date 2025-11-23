@@ -8,6 +8,8 @@ class UBillboardComponent;
 class UBoxComponent;
 class UFlockSubsystem;
 class ABoid;
+class UInstancedStaticMeshComponent;
+class UStaticMesh;
 
 UCLASS()
 class BOIDSCPP_API ABoidVolumeSpawner : public AActor
@@ -33,6 +35,13 @@ public:
 
 private:
     void SpawnBoids(int32 NumBoids);
+    void SpawnDataBoids(int32 NumBoids);
+
+    UPROPERTY(EditAnywhere, Category = "Boid|Data")
+    UStaticMesh* DataBoidMesh = nullptr;  
+
+     UPROPERTY(VisibleAnywhere, Category = "Boid|Data")
+    UInstancedStaticMeshComponent* DataBoidISM = nullptr; 
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
     UBillboardComponent* SpawnPointBillboard;
@@ -45,6 +54,9 @@ private:
 
     UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     float PerceptionRadius = 200.f;
+
+    UPROPERTY(EditAnywhere, Category = "Boid|Motion")
+    float RotationInterpSpeed = 5.f;
 
     UPROPERTY(EditAnywhere, Category = "Boid|Motion")
     float MinAlignForce = -1;

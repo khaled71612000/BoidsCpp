@@ -18,20 +18,28 @@ class BOIDSCPP_API ABoid : public AActor
 public:
     ABoid();
 
-    FVector GetBoidVelocity() const { return BoidVelocity; }
-    float GetPerceptionRadius() const { return PerceptionRadius; }
-
-    void AddForce(const FVector& force);
     void SetSpawnVolume(ABoidVolumeSpawner* spawner) { SpawnVolume = spawner; }
-    float GetMaxAlign() const { return MaxAlignForce; }
     void SetMinMaxForce(float minForce, float maxForce) { MinAlignForce = minForce; MaxAlignForce = maxForce; }
     void SetPercipRadius(int32 rad);
     void SetDisableZ(bool bEnable);
     void SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation);
+
+    float GetMinAlign() const { return MinAlignForce; }
+    float GetMaxAlign() const { return MaxAlignForce; }
+    float GetRotationInterpSpeed() const { return RotationInterpSpeed; }
+    FVector GetBoidVelocity() const { return BoidVelocity; }
+    float GetPerceptionRadius() const { return PerceptionRadius; }
+
     void SimulateFlock(float DeltaTime);
     void ComputeFlockForces();
     void ApplyFlock(float DeltaTime);
     void RequestLaunch(const FVector& LaunchVelocity);
+    void AddForce(const FVector& force);
+
+    bool IsDisableZ() const { return bDisableZ; }
+    bool IsAlignDisabled() const { return bDisableAlign; }
+    bool IsSeparationDisabled() const { return bDisableSeparation; }
+    bool IsCohesionDisabled() const { return bDisableCohesion; }
 
 protected:
     virtual void BeginPlay() override;

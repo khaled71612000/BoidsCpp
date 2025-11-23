@@ -4,6 +4,8 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Boid.h"
 #include "FlockSubsystem.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "FlockDeveloperSettings.h"  
 
 ABoidVolumeSpawner::ABoidVolumeSpawner()
 {
@@ -29,7 +31,17 @@ void ABoidVolumeSpawner::BeginPlay()
         FlockSubsystem->SetWorldBoundsFromVolume(SpawnVolume);
     }
 
-    SpawnBoids(BoidSpawnNumber);
+    const UFlockDeveloperSettings* Settings = UFlockDeveloperSettings::Get();
+    const EFlockSimulationMode Mode = Settings ? Settings->SimulationMode : EFlockSimulationMode::Actors;
+
+    if (Mode == EFlockSimulationMode::Actors)
+    {
+        SpawnBoids(BoidSpawnNumber);
+    }
+    else
+    {
+        SpawnDataBoids(BoidSpawnNumber);
+    }
 }
 
 void ABoidVolumeSpawner::Tick(float DeltaTime)
@@ -73,4 +85,44 @@ void ABoidVolumeSpawner::SpawnBoids(int32 numBoids)
     }
 
     //FlockSubsystem->RebuildTree();
+}
+
+void ABoidVolumeSpawner::SpawnDataBoids(int32 NumBoids)
+{
+    if (!ensure(FlockSubsystem) || !SpawnVolume)
+    {
+        return;
+    }
+
+    if (!DataBoidMesh)
+    {
+        return;
+    }
+
+    if (!DataBoidISM)
+    {
+        DataBoidISM = NewObject<UInstancedStaticMeshComponent>(this, TEXT("BoidISM"));
+        DataBoidISM->SetupAttachment(RootComponent);
+        DataBoidISM->SetStaticMesh(DataBoidMesh);
+        DataBoidISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        DataBoidISM->bCastDynamicShadow = false;
+        DataBoidISM->RegisterComponent();
+    }
+
+    const FVector origin = SpawnVolume->Bounds.Origin;
+    const FVector extent = SpawnVolume->Bounds.BoxExtent;
+    const FBox spawnBounds(origin - extent, origin + extent);
+
+    FlockSubsystem->InitDataBoids(
+        NumBoids,
+        spawnBounds,
+        DataBoidISM,
+        PerceptionRadius,
+        MinAlignForce,
+        MaxAlignForce,
+        bDisableZ,
+        bDisableAlign,
+        bDisableCohesion,
+        bDisableSeparation,
+        RotationInterpSpeed);
 }

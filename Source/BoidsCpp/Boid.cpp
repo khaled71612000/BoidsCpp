@@ -53,7 +53,16 @@ void ABoid::ComputeFlockForces()
 
 void ABoid::ApplyFlock(float DeltaTime)
 {
-    SetActorLocation(GetActorLocation() + BoidVelocity);
+    BoidVelocity += BoidAcceleration * DeltaTime;
+    BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
+
+    if (bDisableZ)
+    {
+        BoidVelocity.Z = 0.0f;
+    }
+
+    const FVector newLoc = GetActorLocation() + BoidVelocity * DeltaTime;
+    SetActorLocation(newLoc);
     CheckBounds();
     UpdateRotation(DeltaTime);
 }
@@ -103,14 +112,6 @@ void ABoid::Flock()
     if (!bDisableCohesion)
     {
         BoidAcceleration += Cohesion(neighbors);
-    }
-
-    BoidVelocity += BoidAcceleration;
-    BoidVelocity = BoidVelocity.GetClampedToSize(MinAlignForce, MaxAlignForce);
-
-    if (bDisableZ)
-    {
-        BoidVelocity.Z = 0;
     }
 }
 
