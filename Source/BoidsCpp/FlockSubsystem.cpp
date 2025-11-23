@@ -157,7 +157,7 @@ void UFlockSubsystem::TickDataBoids(float DeltaTime)
         }
 
         const FTransform xForm(rotation, boidData.Position);
-        DataBoidISM->UpdateInstanceTransform(i, xForm, false, false);
+        DataBoidISM->UpdateInstanceTransform(i, xForm, true, false , false);
     }
 
     DataBoidISM->MarkRenderStateDirty();
@@ -827,7 +827,7 @@ void UFlockSubsystem::DrawDebugTree(bool bDraw) const
                 false,
                 0.0f,
                 0,
-                5.f);
+                8.f);
         }
     }
 
@@ -851,8 +851,8 @@ void UFlockSubsystem::DrawDebugTree(bool bDraw) const
             const int32 boidCount = node.BoidIndices.Num();
 
             const FLinearColor linearColor = FLinearColor::LerpUsingHSV(
-                FLinearColor::Green,
-                FLinearColor::Yellow,
+                FLinearColor::Blue,
+                FLinearColor::Red,
                 depthT);
 
             const FColor color = linearColor.ToFColor(true);
@@ -864,7 +864,7 @@ void UFlockSubsystem::DrawDebugTree(bool bDraw) const
                 false,
                 0.0f,
                 0,
-                5.f);
+                8.f);
         }
     }
 #endif
