@@ -5,6 +5,7 @@
 Small Unreal Engine C++ prototype that simulates classic **boid flocking** in a `UWorldSubsystem`, with optional **data-oriented** simulation and simple **gameplay influences** (rings, volumes, world bounds).
 
 ![download (1)](https://github.com/user-attachments/assets/be15899a-0790-4127-8469-e495da572a85)
+![Boids1](https://github.com/user-attachments/assets/f2e62988-d085-41b8-89f9-48936c0256b7)
 
 ---
 
