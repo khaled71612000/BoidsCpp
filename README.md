@@ -61,12 +61,15 @@ Small Unreal Engine C++ prototype that simulates classic **boid flocking** in a 
 ---
 
 ## Performance
-- With collision Enabled before oct trees.
-<img width="1189" height="525" alt="7502c911-bd1c-4e61-b538-ce12a3365ed5" src="https://github.com/user-attachments/assets/f5374c7c-022c-4944-a00e-d5a7faff9398" />
-- With oct trees before ISM.
-<img width="1051" height="378" alt="77cfaf43-272a-4bc0-8a96-0576d6726bb6" src="https://github.com/user-attachments/assets/12589508-ee3c-48c3-b974-26063859d7fc" />
 
-Right now it supports 15-18k actors on a high end CPU at 60 fps.
+- With collision enabled and no spatial partitioning:  
+  <img width="1189" height="525" alt="7502c911-bd1c-4e61-b538-ce12a3365ed5" src="https://github.com/user-attachments/assets/f5374c7c-022c-4944-a00e-d5a7faff9398" />
+
+- With octree based neighbor queries:  
+  <img width="1051" height="378" alt="77cfaf43-272a-4bc0-8a96-0576d6726bb6" src="https://github.com/user-attachments/assets/12589508-ee3c-48c3-b974-26063859d7fc" />
+
+Right now it supports ISM rendering **15–18k** boid isntance on a high end CPU at ~60 FPS (depending on settings and debug options).
+
 ---
 ## References
 
