@@ -90,59 +90,9 @@ void UFlockSubsystem::TickDataBoids(float DeltaTime)
             }
 
             boid.Position += boid.Velocity * DeltaTime;
-            bool isAdjusted = false;
-            if (!WorldMin.IsNearlyZero() || !WorldMax.IsNearlyZero())
-            {
-                // X
-                if (boid.Position.X < WorldMin.X)
-                {
-                    boid.Position.X = WorldMin.X;
-                    boid.Velocity.X = FMath::Abs(boid.Velocity.X);
-                    isAdjusted = true;
-                }
-                else if (boid.Position.X > WorldMax.X)
-                {
-                    boid.Position.X = WorldMax.X;
-                    boid.Velocity.X = -FMath::Abs(boid.Velocity.X);
-                    isAdjusted = true;
-                }
 
-                // Y
-                if (boid.Position.Y < WorldMin.Y)
-                {
-                    boid.Position.Y = WorldMin.Y;
-                    boid.Velocity.Y = FMath::Abs(boid.Velocity.Y);
-                    isAdjusted = true;
-                }
-                else if (boid.Position.Y > WorldMax.Y)
-                {
-                    boid.Position.Y = WorldMax.Y;
-                    boid.Velocity.Y = -FMath::Abs(boid.Velocity.Y);
-                    isAdjusted = true;
-                }
+            CheckBounds(boid.Position, boid.Velocity, boid.bDisableZ);
 
-                // Z
-                if (!boid.bDisableZ)
-                {
-                    if (boid.Position.Z < WorldMin.Z)
-                    {
-                        boid.Position.Z = WorldMin.Z;
-                        boid.Velocity.Z = FMath::Abs(boid.Velocity.Z);
-                        isAdjusted = true;
-                    }
-                    else if (boid.Position.Z > WorldMax.Z)
-                    {
-                        boid.Position.Z = WorldMax.Z;
-                        boid.Velocity.Z = -FMath::Abs(boid.Velocity.Z);
-                        isAdjusted = true;
-                    }
-                }
-
-                if (isAdjusted)
-                {
-                    // Data is just set unlike actors
-                }
-            }
         });
 
     // 2) Gamethread data to actor transform
@@ -211,7 +161,7 @@ void UFlockSubsystem::InitDataBoids(
             : FRotator::ZeroRotator;
 
         const FTransform xForm(rot, spawnPos);
-        DataBoidISM->AddInstance(xForm);
+        DataBoidISM->AddInstanceWorldSpace(xForm);
     }
 }
 
@@ -225,6 +175,7 @@ void UFlockSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		MaxTreeDepth = Settings->MaxTreeDepth;
 		MinNodeHalfSize = Settings->MinNodeHalfSize;
         SimulationMode = Settings->SimulationMode;
+        MaxNeighborsToConsider = Settings->MaxNeighborsToConsider;
 	}
 
     OctNodes.Reset();
@@ -310,6 +261,11 @@ FVector UFlockSubsystem::ComputeSeparationData(int32 Index, const TArray<int32>&
     int32 count = 0;
     for (int32 otherIndex : Neighbors)
     {
+        if (count >= MaxNeighborsToConsider)
+        {
+            break;
+        }
+
         const FBoidData& other = DataBoids[otherIndex];
 
         FVector diff = boid.Position - other.Position;
@@ -341,6 +297,12 @@ FVector UFlockSubsystem::ComputeAlignmentData(int32 Index, const TArray<int32>& 
 
     for (int32 otherIndex : Neighbors)
     {
+
+        if (count >= MaxNeighborsToConsider)
+        {
+            break;
+        }
+
         const FBoidData& other = DataBoids[otherIndex];
         force += other.Velocity;
         ++count;
@@ -363,6 +325,11 @@ FVector UFlockSubsystem::ComputeCohesionData(int32 Index, const TArray<int32>& N
     int32 count = 0;
     for (int32 otherIndex : Neighbors)
     {
+        if (count >= MaxNeighborsToConsider)
+        {
+            break;
+        }
+
         const FBoidData& other = DataBoids[otherIndex];
         force += other.Position;
         ++count;
@@ -377,6 +344,64 @@ FVector UFlockSubsystem::ComputeCohesionData(int32 Index, const TArray<int32>& N
     }
 
     return force;
+}
+
+bool UFlockSubsystem::CheckBounds(FVector& InOutPosition, FVector& InOutVelocity, bool bDisableZ) const
+{
+    //No volume has been set.
+    if (WorldMin == FVector::ZeroVector && WorldMax == FVector::ZeroVector)
+    {
+        return false;
+    }
+
+    bool isAdjusted = false;
+
+    // X
+    if (InOutPosition.X < WorldMin.X)
+    {
+        InOutPosition.X = WorldMin.X;
+        InOutVelocity.X = FMath::Abs(InOutVelocity.X);
+        isAdjusted = true;
+    }
+    else if (InOutPosition.X > WorldMax.X)
+    {
+        InOutPosition.X = WorldMax.X;
+        InOutVelocity.X = -FMath::Abs(InOutVelocity.X);
+        isAdjusted = true;
+    }
+
+    // Y
+    if (InOutPosition.Y < WorldMin.Y)
+    {
+        InOutPosition.Y = WorldMin.Y;
+        InOutVelocity.Y = FMath::Abs(InOutVelocity.Y);
+        isAdjusted = true;
+    }
+    else if (InOutPosition.Y > WorldMax.Y)
+    {
+        InOutPosition.Y = WorldMax.Y;
+        InOutVelocity.Y = -FMath::Abs(InOutVelocity.Y);
+        isAdjusted = true;
+    }
+
+    // Z
+    if (!bDisableZ)
+    {
+        if (InOutPosition.Z < WorldMin.Z)
+        {
+            InOutPosition.Z = WorldMin.Z;
+            InOutVelocity.Z = FMath::Abs(InOutVelocity.Z);
+            isAdjusted = true;
+        }
+        else if (InOutPosition.Z > WorldMax.Z)
+        {
+            InOutPosition.Z = WorldMax.Z;
+            InOutVelocity.Z = -FMath::Abs(InOutVelocity.Z);
+            isAdjusted = true;
+        }
+    }
+
+    return isAdjusted;
 }
 
 void UFlockSubsystem::InsertBoidIntoNode(int32 NodeIndex, ABoid* Boid)
@@ -482,7 +507,8 @@ void UFlockSubsystem::QueryNode(
     ABoid* QueryBoid,
     TArray<ABoid*>& OutNeighbors) const
 {
-    if (!OctNodes.IsValidIndex(NodeIndex))
+    if (!OctNodes.IsValidIndex(NodeIndex) ||
+        OutNeighbors.Num() >= MaxNeighborsToConsider)
     {
         return;
     }
@@ -500,18 +526,19 @@ void UFlockSubsystem::QueryNode(
             continue;
         }
 
-        const float distSq = FVector::DistSquared(
-            QueryPos,
-            other->GetActorLocation()
-        );
+        const float distSq = FVector::DistSquared(QueryPos, other->GetActorLocation());
 
         if (distSq <= RadiusSq)
         {
             OutNeighbors.Add(other);
+            if (OutNeighbors.Num() >= MaxNeighborsToConsider)
+            {
+                return;
+            }
         }
     }
 
-    if (!node.IsLeaf())
+    if (!node.IsLeaf() && OutNeighbors.Num() < MaxNeighborsToConsider)
     {
         for (int32 childIdx = 0; childIdx < 8; ++childIdx)
         {
@@ -519,6 +546,10 @@ void UFlockSubsystem::QueryNode(
             if (childNodeIndex != INDEX_NONE)
             {
                 QueryNode(childNodeIndex, QueryPos, RadiusSq, QueryBoid, OutNeighbors);
+                if (OutNeighbors.Num() >= MaxNeighborsToConsider)
+                {
+                    return;
+                }
             }
         }
     }
@@ -692,7 +723,8 @@ void UFlockSubsystem::SubdivideDataNode(int32 NodeIndex)
 
 void UFlockSubsystem::QueryDataNode(int32 NodeIndex, const FVector& QueryPos, float RadiusSq, int32 QueryBoidIndex, TArray<int32>& OutNeighbors) const
 {
-    if (!DataOctNodes.IsValidIndex(NodeIndex))
+    if (!DataOctNodes.IsValidIndex(NodeIndex) ||
+        OutNeighbors.Num() >= MaxNeighborsToConsider)
     {
         return;
     }
@@ -718,10 +750,14 @@ void UFlockSubsystem::QueryDataNode(int32 NodeIndex, const FVector& QueryPos, fl
         if (distSq <= RadiusSq)
         {
             OutNeighbors.Add(otherIndex);
+            if (OutNeighbors.Num() >= MaxNeighborsToConsider)
+            {
+                return;
+            }
         }
     }
 
-    if (!node.IsLeaf())
+    if (!node.IsLeaf() && OutNeighbors.Num() < MaxNeighborsToConsider)
     {
         for (int32 childIdx = 0; childIdx < 8; ++childIdx)
         {
@@ -729,6 +765,10 @@ void UFlockSubsystem::QueryDataNode(int32 NodeIndex, const FVector& QueryPos, fl
             if (childNodeIndex != INDEX_NONE)
             {
                 QueryDataNode(childNodeIndex, QueryPos, RadiusSq, QueryBoidIndex, OutNeighbors);
+                if (OutNeighbors.Num() >= MaxNeighborsToConsider)
+                {
+                    return;
+                }
             }
         }
     }
@@ -810,8 +850,6 @@ void UFlockSubsystem::DrawDebugTree(bool bDraw) const
             const float depthT = (MaxTreeDepth > 0)
                 ? FMath::Clamp(node.Depth * invMaxDepth, 0.0f, 1.0f)
                 : 0.0f;
-
-            const int32 boidCount = node.Boids.Num();
 
             const FLinearColor linearColor = FLinearColor::LerpUsingHSV(
                 FLinearColor::Blue,

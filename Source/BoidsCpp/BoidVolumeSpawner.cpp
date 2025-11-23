@@ -16,8 +16,6 @@ ABoidVolumeSpawner::ABoidVolumeSpawner()
 
     SpawnVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("Spawn Volume"));
     SpawnVolume->SetupAttachment(RootComponent);
-
-    BoidSpawnNumber = 0;
 }
 
 void ABoidVolumeSpawner::BeginPlay()

@@ -4,8 +4,6 @@
 #include "GameFramework/Actor.h"
 #include "BoidRing.generated.h"
 
-class USphereComponent;
-
 UCLASS()
 class BOIDSCPP_API ABoidRing : public AActor
 {

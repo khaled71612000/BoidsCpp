@@ -1,7 +1,7 @@
 #include "BoidRing.h"
-#include "Components/SphereComponent.h"
 #include "Boid.h"
 #include "Engine/World.h"
+#include "Components/StaticMeshComponent.h"
 
 ABoidRing::ABoidRing()
 {

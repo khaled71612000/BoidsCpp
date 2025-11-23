@@ -33,4 +33,7 @@ public:
 
     UPROPERTY(EditAnywhere, Config, Category = "Flock")
     EFlockSimulationMode SimulationMode = EFlockSimulationMode::Actors;
+
+    UPROPERTY(EditAnywhere, Config, Category = "Flock", meta = (ClampMin = "1"))
+    int32 MaxNeighborsToConsider = 64;
 };

@@ -108,14 +108,20 @@ public:
     void RemoveFromBoidList(ABoid* Boid);
 
     void GetNeighbors(ABoid* Query, float Radius, TArray<ABoid*>& OutNeighbors) const;
-    void SetWorldBoundsFromVolume(UBoxComponent* Volume);
-    void DrawDebugTree(bool bDraw) const;
-
     void RebuildTree();
+
+    void DrawDebugTree(bool bDraw) const;
 
     FVector ComputeSeparationData(int32 Index, const TArray<int32>& Neighbors);
     FVector ComputeAlignmentData(int32 Index, const TArray<int32>& Neighbors);
     FVector ComputeCohesionData(int32 Index, const TArray<int32>& Neighbors);
+
+    bool CheckBounds(
+        FVector& InOutPosition,
+        FVector& InOutVelocity,
+        bool bDisableZ) const;
+
+    void SetWorldBoundsFromVolume(UBoxComponent* Volume);
 
 private:
     //Actor Functions
@@ -130,7 +136,7 @@ private:
     ) const;
     bool SphereIntersectsNode(
         const FVector& QueryPos,
-        float Radius,
+        float RadiusSq,
         const FBoidSpatialNode& Node
     ) const;
 
@@ -159,6 +165,7 @@ private:
     int32 MaxBoidsPerNode = 8;
     int32 MaxTreeDepth = 7;
     float MinNodeHalfSize = 1.f;
+    int32 MaxNeighborsToConsider = 64;
 
     TArray<ABoid*> Boids;
     TArray<FBoidSpatialNode> OctNodes;

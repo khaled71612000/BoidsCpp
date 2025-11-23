@@ -24,6 +24,7 @@ public:
     void SetDisableZ(bool bEnable);
     void SetRules(bool disableAlign, bool disableCohesion, bool disableSeparation);
 
+    void CheckBounds();
     float GetMinAlign() const { return MinAlignForce; }
     float GetMaxAlign() const { return MaxAlignForce; }
     float GetRotationInterpSpeed() const { return RotationInterpSpeed; }
@@ -47,7 +48,6 @@ protected:
 private:
 
     void Flock();
-    void CheckBounds();
     void UpdateRotation(float deltaTime);
 
     FVector Separation(const TArray<ABoid*>& boids);
@@ -75,10 +75,10 @@ private:
     FVector ExternalForce = FVector::ZeroVector;
 
     UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-    float MinAlignForce = -1.f;
+    float MinAlignForce = 5.f;
 
     UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
-    float MaxAlignForce = 1.f;
+    float MaxAlignForce = 15.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Boid|Motion")
 	FVector PendingLaunchVelocity = FVector::ZeroVector;

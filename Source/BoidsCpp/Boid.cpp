@@ -221,64 +221,13 @@ void ABoid::SetRules(bool disableAlign, bool disableCohesion, bool disableSepara
 
 void ABoid::CheckBounds()
 {
-    if (!SpawnVolume)
+    if (!FlockSubsystem)
     {
         return;
     }
 
-    const FBoxSphereBounds& bounds = SpawnVolume->GetSpawnVolume()->Bounds;
-    FVector min = bounds.Origin - bounds.BoxExtent;
-    FVector max = bounds.Origin + bounds.BoxExtent;
-
     FVector loc = GetActorLocation();
-    bool isAdjusted = false;
-
-    // X
-    if (loc.X < min.X)
-    {
-        loc.X = min.X;
-        BoidVelocity.X = FMath::Abs(BoidVelocity.X);
-        isAdjusted = true;
-    }
-    else if (loc.X > max.X)
-    {
-        loc.X = max.X;
-        BoidVelocity.X = -FMath::Abs(BoidVelocity.X);
-        isAdjusted = true;
-    }
-
-    // Y
-    if (loc.Y < min.Y)
-    {
-        loc.Y = min.Y;
-        BoidVelocity.Y = FMath::Abs(BoidVelocity.Y);
-        isAdjusted = true;
-    }
-    else if (loc.Y > max.Y)
-    {
-        loc.Y = max.Y;
-        BoidVelocity.Y = -FMath::Abs(BoidVelocity.Y);
-        isAdjusted = true;
-    }
-
-    // Z
-    if (!bDisableZ)
-    {
-        if (loc.Z < min.Z)
-        {
-            loc.Z = min.Z;
-            BoidVelocity.Z = FMath::Abs(BoidVelocity.Z);
-            isAdjusted = true;
-        }
-        else if (loc.Z > max.Z)
-        {
-            loc.Z = max.Z;
-            BoidVelocity.Z = -FMath::Abs(BoidVelocity.Z);
-            isAdjusted = true;
-        }
-    }
-
-    if (isAdjusted)
+    if (FlockSubsystem->CheckBounds(loc, BoidVelocity, bDisableZ))
     {
         SetActorLocation(loc);
     }
