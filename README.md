@@ -69,6 +69,7 @@ Small Unreal Engine C++ prototype that simulates classic **boid flocking** in a 
   <img width="1051" height="378" alt="77cfaf43-272a-4bc0-8a96-0576d6726bb6" src="https://github.com/user-attachments/assets/12589508-ee3c-48c3-b974-26063859d7fc" />
 
 Right now it supports ISM rendering **15–18k** boid isntance on a high end CPU at ~60 FPS (depending on settings and debug options).
+<img width="1056" height="509" alt="image" src="https://github.com/user-attachments/assets/d606400a-04e1-421a-9cf1-7e3fd6a41b55" />
 
 ---
 ## References
