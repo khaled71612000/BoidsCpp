@@ -1,36 +1,134 @@
 
 ![9](https://github.com/khaled71612000/BoidsCpp/assets/59780800/b57b7711-6e21-420b-9a0f-106fb45c7a14)
 # BoidsCpp
+BoidsCPP is a small Unreal Engine prototype that implements a classic boid flocking simulation as a **World Subsystem**, with optional **data oriented** simulation and simple **gameplay influences** (rings, volumes, world bounds).
 
-**BoidsCpp** is a project developed using C++ to simulate the behavior of boids (bird-like objects) using the Boids algorithm. This project focuses on implementing flocking behavior, including alignment, cohesion, and separation, to create realistic group movements.
 ![download (1)](https://github.com/user-attachments/assets/be15899a-0790-4127-8469-e495da572a85)
 
 ## Key Components
 
-### Source
+### `UFlockSubsystem` (World Subsystem)
+Central brain of the flocking system.
+- Owns the **boid arrays**:
+  - `TArray<ABoid*> Boids` for actor-based simulation
+  - `TArray<FBoidData> DataBoids` for data-oriented simulation
+- Maintains **spatial partitioning**:
+  - `TArray<FBoidSpatialNode>` and `TArray<FBoidDataSpatialNode>` (octree-style)
+  - Configurable via `UFlockDeveloperSettings`
+- Handles **per-frame simulation**:
+  - `Tick(float DeltaTime)` switches between Actor / Data modes
+  - `TickActorBoids(DeltaTime)` and `TickDataBoids(DeltaTime)`:
+    - Rebuilds spatial tree
+    - Queries neighbors
+    - Computes separation, alignment, and cohesion-like forces
+    - Updates positions and rotations
+- Supports **world bounds**:
+  - `SetWorldBoundsFromVolume(UBoxComponent* Volume)`
+  - `CheckBounds(Position, Velocity, bDisableZ)` to clamp or wrap boids
 
-#### Boid.cpp
-- **Flocking Behavior:** Implements the core flocking algorithms for alignment, cohesion, and separation.
-- **Movement Logic:** Manages the movement and interaction of individual boids.
-- **Influence Handling:** Boids can be influenced by environmental factors such as rings.
-- **Velocity and Acceleration:** Manages boid movement by applying forces and updating velocity and acceleration.
-- **Bounds Checking:** Ensures boids stay within the defined simulation area, reversing velocity if they attempt to leave the bounds.
-- **Rotation Update:** Adjusts boid orientation based on movement direction for realistic behavior.
+### `ABoid` (Actor Boid)
+An actor-based boid that delegates most logic to the subsystem.
+- Visual representation:
+  - `USkeletalMeshComponent* BoidSkeletalMesh` as root
+- Motion parameters:
+  - `float MinAlignForce`, `float MaxAlignForce`
+  - `float PerceptionRadius`
+  - `float RotationInterpSpeed`
+  - Toggle flags: `bDisableZ`, `bDisableAlign`, `bDisableSeparation`, `bDisableCohesion`
+- Core methods:
+  - `SimulateFlock(float DeltaTime)`
+  - `ComputeFlockForces()`
+  - `ApplyFlock(float DeltaTime)`
+  - `AddForce(const FVector& Force)`
+  - `RequestLaunch(const FVector& LaunchVelocity)`
+  - Getter helpers such as `GetBoidPosition()`, `GetBoidVelocity()`, `GetPerceptionRadius()`
 
-#### BoidRing.cpp
-- **Ring Influence:** Manages the influence of rings on boids, determining whether boids pass through or go around the rings.
-- **Probability and Duration:** Sets the probability of influence and the duration of the effect on boids.
 
-#### BoidVolumeSpawner.cpp
-- **Spawner Setup:** Initializes the spawning volume and sets up spawning parameters.
-- **Boid Spawning:** Handles the spawning of boids within a defined volume, ensuring they are added to the flock subsystem.
+### `ABoidVolumeSpawner`
+Utility actor used to spawn and configure a group of boids inside a box volume.
+- Components:
+  - `UBoxComponent* SpawnVolume`
+  - `UBillboardComponent* SpriteComponent`
+- Spawning:
+  - `int32 BoidSpawnNumber`
+  - `TSubclassOf<ABoid> BoidClass`
+- Optional **data-oriented boid** support:
+  - `UInstancedStaticMeshComponent* DataBoidISM`
+  - Parameters passed to the subsystem for data boids:
+    - Perception radius
+    - Min / Max speed / force
+    - Rotation interpolation speed
+- Behavior toggles applied to spawned boids:
+  - `bDisableZ`
+  - `bDisableAlign`
+  - `bDisableSeparation`
+  - `bDisableCohesion`
+
+### `ABoidRing`
+A gameplay “influence field” that affects nearby boids.
+- Component:
+  - `UStaticMeshComponent* DetectionSphere` used as an overlap / detection volume
+- Parameters:
+  - `bool bGoThroughRing`  
+    - `true` → boids are encouraged to pass through the ring
+    - `false` → boids steer around it
+  - `float LaunchSpeed` – optional forward launch velocity
+  - `float InnerRadiusFrac` – inner region fraction relative to the detection sphere radius
+- Behavior:
+  - `InfluenceBoids()`:
+    - Finds overlapping `ABoid` instances
+    - Computes a direction to the ring and a tangential direction for swirl-like motion
+    - Applies a weighted force via `AddForce`
+    - When configured, calls `RequestLaunch` with a forward launch vector
+
+### `UFlockDeveloperSettings`
+Project-level tuning for the flock system, exposed under **Project Settings → Flock**.
+- Octree settings:
+  - `int32 MaxBoidsPerNode`
+  - `int32 MaxTreeDepth`
+  - `float MinNodeHalfSize`
+- Simulation:
+  - `EFlockSimulationMode SimulationMode` (Actors / DataOriented)
+  - `int32 MaxNeighborsToConsider`
 
 ## Features
 
-- **Realistic Flocking:** Simulates flocking behavior with alignment, cohesion, and separation.
-- **Dynamic Interaction:** Boids interact dynamically with each other and environmental elements like rings.
-- **Configurable Parameters:** Allows customization of simulation parameters through configuration files.
-- **Environmental Influence:** Boids can be influenced by external factors, adding complexity to the simulation.
+- **World Subsystem–based design**
+  - Centralized flock logic independent of any specific map
+  - Easy to find and profile (single subsystem, single tick entry point)
+
+- **Two simulation paths**
+  - **Actor Mode**:
+    - Boids as regular `AActor` instances
+    - Good for small to medium flocks with per-boid gameplay
+  - **Data-Oriented Mode**:
+    - Boids stored as `FBoidData` structs
+    - Positions and velocities simulated in bulk
+    - Rendered through a `UInstancedStaticMeshComponent` for large flocks
+
+- **Spatial partitioning**
+  - Custom octree-like structure for neighbor queries
+  - Uses squared distance checks for cache-friendly, branch-light queries
+  - Configurable via developer settings
+
+- **Configurable boid behavior**
+  - Perception radius
+  - Min/max speed (via `MinAlignForce` / `MaxAlignForce` parameters)
+  - Optional disabling of:
+    - Z-axis motion
+    - Alignment
+    - Separation
+    - Cohesion
+
+- **Influence rings (steering volumes)**
+  - Simple way to:
+    - Pull boids through a ring
+    - Make them orbit or steer around an object
+    - Apply launch forces for “burst” behavior
+
+- **World bounds support**
+  - Optional world bounds derived from a `UBoxComponent`
+  - Simple containment / wrap logic via `CheckBounds`
 
 ## References
 - Craig Reynolds' Boids: [Boids Algorithm](https://www.red3d.com/cwr/boids/)
