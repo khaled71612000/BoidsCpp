@@ -161,7 +161,7 @@ void UFlockSubsystem::InitDataBoids(
             : FRotator::ZeroRotator;
 
         const FTransform xForm(rot, spawnPos);
-        DataBoidISM->AddInstanceWorldSpace(xForm);
+        DataBoidISM->AddInstance(xForm, true);
     }
 }
 
