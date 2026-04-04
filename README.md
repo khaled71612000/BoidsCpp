@@ -1,89 +1,61 @@
-![9](https://github.com/khaled71612000/BoidsCpp/assets/59780800/b57b7711-6e21-420b-9a0f-106fb45c7a14)
-
 # BoidsCpp
 
-Small Unreal Engine C++ prototype that simulates classic **boid flocking** in a `UWorldSubsystem`, with optional **data-oriented** simulation and simple **gameplay influences** (rings, volumes, world bounds).
+![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine-0E1128?logo=unrealengine&logoColor=white)
+![C++](https://img.shields.io/badge/C++-00599C?logo=c%2B%2B&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-![download (1)](https://github.com/user-attachments/assets/be15899a-0790-4127-8469-e495da572a85)
-![Boids1](https://github.com/user-attachments/assets/f2e62988-d085-41b8-89f9-48936c0256b7)
+Unreal Engine C++ implementation of Craig Reynolds' **Boids flocking algorithm** with a custom **Octree spatial partitioning** system. Simulates large numbers of agents (birds, fish, drones) exhibiting emergent group behaviour through three simple steering rules: separation, alignment, and cohesion.
 
----
+Supports two simulation modes — actor-based (full AActor per boid) and data-driven ISM-based (instanced mesh, scales to thousands) — switchable at runtime.
 
-## Overview
+## Architecture
 
-- Central flock manager (`UFlockSubsystem`)
-- Boid actors (`ABoid`) and optional data-boids (`FBoidData` + ISM)
-- Spawner volumes and rings to shape flock behavior
+Key classes (from source code):
 
----
+- **`ABoid`** (extends `AActor`) — Individual boid agent. Owns a skeletal mesh (animated) and static mesh. Each tick calls `ComputeFlockForces()` which queries the FlockSubsystem for spatial neighbours, then computes `Separation()`, `Align()`, and `Cohesion()` force vectors. Supports external force injection (`AddForce`, `RequestLaunch`), configurable perception radius, and per-rule toggle (disable alignment/cohesion/separation independently).
 
-## Key Components
+- **`UFlockSubsystem`** (extends `UTickableWorldSubsystem`) — The brains of the simulation. Manages all boids via an **Octree** (`FBoidSpatialNode` tree) for O(log n) neighbour queries instead of O(n²) brute force. Rebuilt every tick via `RebuildTree()`. Also handles the data-driven path: `InitDataBoids()` spawns `FBoidData` structs backed by an `UInstancedStaticMeshComponent` — no Actor overhead, scales to thousands.
 
-### `UFlockSubsystem` (World Subsystem)
+- **`FBoidSpatialNode`** / **`FBoidDataSpatialNode`** — Octree node structs. Each node stores a center + half-extent and up to 8 children indices. Leaf nodes hold boid references. `SphereIntersectsNode()` drives the recursive spatial query.
 
-- Stores all boids (actor and data) and updates them every tick  
-- Uses a spatial tree to find neighbors efficiently  
-- Optional world bounds from a `UBoxComponent` volume
+- **`ABoidVolumeSpawner`** — Spawns boids uniformly within a box volume. Feeds the boids their spawn volume reference for bounds-wrapping.
 
-### `ABoid` (Actor Boid)
+- **`ABoidPointSpawner`** — Spawns boids from a list of discrete world points.
 
-- Single boid actor with a skeletal mesh  
-- Reads neighbors from the subsystem and applies forces  
-- Tweakable settings: speed range, perception radius, rotation smoothing  
-- Flags to disable Z, alignment, separation, cohesion if needed
-
-### `ABoidVolumeSpawner`
-
-- Box volume that spawns a configurable number of boids  
-- Lets you choose boid class and behavior flags  
-- Optional data-oriented path using a `UInstancedStaticMeshComponent`
-
-### `ABoidRing`
-
-- Simple influence actor that affects nearby boids  
-- Can encourage boids to pass through, steer around, or swirl  
-- Optional launch boost when boids enter an inner radius
-
-### `UFlockDeveloperSettings`
-
-- Project settings page under **Project Settings → Flock**  
-- Controls flock mode (actors / data), neighbor caps, and tree detail
-
----
+- **`FlockDeveloperSettings`** (`UDeveloperSettings` subclass) — Project settings panel for flock parameters (simulation mode, max boids per node, tree depth) editable in the UE5 Project Settings UI without recompiling.
 
 ## Features
 
-- Classic flocking rules (separation / alignment / cohesion)  
-- Centralized simulation in a `UWorldSubsystem`  
-- Actor or data-oriented simulation paths  
-- Level setup via spawners and rings, no custom code needed  
-- Optional world bounds so boids stay inside a defined space  
+- Separation, alignment, and cohesion rules — individually toggleable at runtime
+- Octree spatial partitioning — efficient neighbour queries at scale
+- Two simulation modes: Actor (full visual fidelity) and Data/ISM (high performance)
+- Configurable perception radius, speed range, and rotation interpolation per boid
+- Bounds wrapping — boids seamlessly re-enter the opposite side of the spawn volume
+- External force injection and launch impulse support
+- Animated crow skeletal mesh included
 
----
+## Tech Stack
 
-## Performance
+| Technology | Role |
+|---|---|
+| Unreal Engine 5 | Game engine |
+| C++ | Simulation logic, subsystem, spatial structures |
+| UInstancedStaticMeshComponent | High-performance data-mode rendering |
+| UTickableWorldSubsystem | Global simulation manager |
 
-- With collision enabled and no spatial partitioning:  
-  <img width="1189" height="525" alt="7502c911-bd1c-4e61-b538-ce12a3365ed5" src="https://github.com/user-attachments/assets/f5374c7c-022c-4944-a00e-d5a7faff9398" />
+## Getting Started
 
-- With octree based neighbor queries:  
-  <img width="1051" height="378" alt="77cfaf43-272a-4bc0-8a96-0576d6726bb6" src="https://github.com/user-attachments/assets/12589508-ee3c-48c3-b974-26063859d7fc" />
+### Prerequisites
+- Unreal Engine 5.x
+- Visual Studio 2022 with **Desktop development with C++**
+- Git LFS (`git lfs install`)
 
-Right now it supports ISM rendering **15–18k** boid isntance on a high end CPU at ~60 FPS (depending on settings and debug options).
-<img width="1056" height="509" alt="image" src="https://github.com/user-attachments/assets/d606400a-04e1-421a-9cf1-7e3fd6a41b55" />
-
----
-## References
-
-- [Boids Algorithm – Craig Reynolds](https://www.red3d.com/cwr/boids/)  
-- [Steering Behaviors for Autonomous Characters](https://www.red3d.com/cwr/steer/gdc99/)  
-- [YouTube Demo](https://youtu.be/L2dsAzmNYwI?si=cwHMqw6KVNRLABKw)
-
----
-
-## Screenshots
-
-![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/5ff6f549-8c8e-470d-918d-90dbfa3d03b3)  
-![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/a1cf2645-6f31-45e0-bfef-9e69aa942d4a)  
-![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/dd67af29-e111-4c67-8b7f-2e8b4a3cc908)  
-![image](https://github.com/khaled71612000/BoidsCpp/assets/59780800/7af14b98-7cc8-4631-be4c-fa87049b2fb8)
+### Setup
+```bash
+git lfs install
+git clone https://github.com/khaled71612000/BoidsCpp.git
+```
+1. Right-click `BoidsCpp.uproject` → **Generate Visual Studio project files**
+2. Open `.sln` → Build (**Development Editor | Win64**)
+3. Launch via Unreal Editor
+4. Tune flock parameters in **Project Settings → Flock Developer Settings**
